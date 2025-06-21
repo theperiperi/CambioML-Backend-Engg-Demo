@@ -1,0 +1,51 @@
+version: '3.8'
+
+services:
+  computer-use-fastapi:
+    build:
+      context: .
+      dockerfile: Dockerfile.fastapi
+    container_name: computer-use-fastapi
+    ports:
+      - "8000:8000"  # FastAPI
+      - "5901:5901"  # VNC
+      - "8080:8080"  # noVNC
+    environment:
+      - DISPLAY=:1
+      - PYTHONPATH=/home/computeruse
+    volumes:
+      # Mount database for persistence
+      - ./data:/home/computeruse/data
+      # Mount logs
+      - ./logs:/home/computeruse/logs
+    restart: unless-stopped
+    privileged: true  # Required for X11 and VNC
+    shm_size: '2gb'   # Shared memory for X11
+    networks:
+      - computer-use-network
+
+  # Optional: Add a reverse proxy for production
+  nginx:
+    image: nginx:alpine
+    container_name: computer-use-nginx
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./ssl:/etc/nginx/ssl:ro
+    depends_on:
+      - computer-use-fastapi
+    restart: unless-stopped
+    networks:
+      - computer-use-network
+    profiles:
+      - production
+
+networks:
+  computer-use-network:
+    driver: bridge
+
+volumes:
+  data:
+  logs: 
